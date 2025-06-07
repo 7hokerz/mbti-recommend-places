@@ -90,13 +90,16 @@ X_reduced = reducer.fit_transform(X, ensure_all_finite=True)
 clusters = kmeans.fit_predict(X_reduced) 
 place_features['cluster'] = clusters
 
-# 3. 클러스터링 결과 평가
-print(f"Silhouette score:{silhouette_score(X_reduced, place_features['cluster'])}")
-print(f"SSE (Inertia): {kmeans.inertia_}")
-db_score = davies_bouldin_score(X_reduced, kmeans.labels_)
-print(f"Davies-Bouldin Index: {db_score}")
-ch_score = calinski_harabasz_score(X_reduced, kmeans.labels_)
-print(f"Calinski-Harabasz Index: {ch_score}")
+# 평가 지표 출력
+def evaluation_metrics(): 
+    si_score = silhouette_score(X_reduced, place_features['cluster'])
+    db_score = davies_bouldin_score(X_reduced, kmeans.labels_)
+    ch_score = calinski_harabasz_score(X_reduced, kmeans.labels_)
+    
+    print(f"Silhouette score:{si_score}")
+    print(f"SSE (Inertia): {kmeans.inertia_}")
+    print(f"Davies-Bouldin Index: {db_score}")
+    print(f"Calinski-Harabasz Index: {ch_score}")
 
 #for i in range(8):
 #        print(f'cluster{i}: {place_features[place_features['cluster'] == i]['cluster'].count()}')
@@ -219,6 +222,8 @@ async def recommend_places(mbti, 계절):
 # recommend_places('ISTJ', 'SEASON_SPRING')
 
 
+
+
 '''
 
 [[
@@ -228,7 +233,7 @@ async def recommend_places(mbti, 계절):
     하늘상태(SKY) 코드 : 맑음(1), 구름많음(3), 흐림(4)
     강수형태(PTY) 코드 : (단기) 없음(0), 비(1), 비/눈(2), 눈(3), 소나기(4)
 
-    mbti의 경우 근거 자료로 높음: 1, 중간: 0.75, 낮음 0.5로 가중치 설정
+    mbti의 경우 근거 자료로 높음: 1, 중간: 0.5, 낮음 0으로 가중치 설정
 
     날씨는 선정된 장소를 바탕으로 계산하고 추천해줌.
     장소 후보군을 많이 선정한 후 
