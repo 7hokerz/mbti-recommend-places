@@ -1,126 +1,18 @@
 import os
 import pandas as pd
 import numpy as np
+import joblib
+from sklearn.preprocessing import MinMaxScaler
+import request_weather
 import asyncio
 
 import warnings
 warnings.filterwarnings('ignore', category=FutureWarning)
 
-from sklearn.metrics import silhouette_score, davies_bouldin_score, calinski_harabasz_score
-from sklearn.preprocessing import StandardScaler
-from sklearn.cluster import KMeans
-from sklearn.manifold import TSNE
-import umap
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+MODEL_DIR = os.path.join(SCRIPT_DIR, "models")
 
-import matplotlib.pyplot as plt
-
-import joblib
-
-import request_weather
-
-script_path = os.path.abspath(__file__)
-script_dir = os.path.dirname(script_path)
-
-# 1. 데이터 불러오기
-data = pd.read_csv(f"{script_dir}/data/place3_3.csv")
-
-processed_data = data.copy() # 복사본
-
-# 표준화
-scaler = StandardScaler() # 스케일링
-
-# 차원 축소
-reducer = umap.UMAP(
-        n_neighbors=15,
-        min_dist=0.1,
-        n_components=3, #random_state=42
-    )
-
-# 클러스터링
-k = 8 # 클러스터 수 
-kmeans = KMeans(
-    n_clusters=k, #random_state=42
-    )
-
-# 차원 축소 (시각화용)
-tsne = TSNE(n_components=2, perplexity=40, random_state=42)
-
-# 새로운 특성 부여
-def create_features(df):
-    # 키워드 특성
-    df['레저/스포츠'] = df['TMAP_CATE_MCLS_NM'].apply(lambda x: 1 if '레저/스포츠' in x else 0)
-    df['전통/역사'] = df['TMAP_CATE_MCLS_NM'].apply(lambda x: 1 if '전통/역사' in x else 0) 
-    df['감성/체험거리'] = df['TMAP_CATE_MCLS_NM'].apply(lambda x: 1 if '감성/체험 거리' in x else 0)
-    df['조망/전망'] = df['TMAP_CATE_MCLS_NM'].apply(lambda x: 1 if '조망/전망' in x else 0)
-    df['자연물'] = df['TMAP_CATE_MCLS_NM'].apply(lambda x: 1 if '자연물' in x else 0)
-    df['문화시설감상'] = df['TMAP_CATE_MCLS_NM'].apply(lambda x: 1 if '문화시설감상' in x else 0)
-
-    # 키워드 간 상호작용 특성
-    df['자연_조망_결합'] = (df['자연물'] & df['조망/전망']).astype(int)
-    df['자연_역사_결합'] = (df['자연물'] & df['전통/역사']).astype(int)
-    df['자연_레저_결합'] = (df['자연물'] & df['레저/스포츠']).astype(int)
-    df['자연_체험_결합'] = (df['자연물'] & df['감성/체험거리']).astype(int)
-
-    df['조망_체험_결합'] = (df['조망/전망'] & df['감성/체험거리']).astype(int)
-    df['조망_역사_결합'] = (df['조망/전망'] & df['전통/역사']).astype(int)
-    
-    df['역사_문화_결합'] = (df['전통/역사'] & df['문화시설감상']).astype(int)
-    df['레저_체험_결합'] = (df['레저/스포츠'] & df['감성/체험거리']).astype(int)
-    
-    return df
-
-place_features = create_features(processed_data)
-
-place_features = processed_data[[
-    'SIDO_NM', 'SGG_NM', 'ITS_BRO_NM', 'In/Out_Type(1/0)',
-    'SEASON_SPRING','SEASON_SUMMER','SEASON_AUTUMN','SEASON_WINTER',
-    '레저/스포츠', '전통/역사', '감성/체험거리', '조망/전망', '자연물', '문화시설감상',
-    '자연_조망_결합','자연_역사_결합','자연_레저_결합','자연_체험_결합','역사_문화_결합','레저_체험_결합',
-    '조망_체험_결합','조망_역사_결합'
-]].copy()
-
-# 2. 데이터 전처리
-# 2.1 표준화
-X = scaler.fit_transform(place_features.iloc[:, 8:])
-
-# 2.2 차원 축소
-X_reduced = reducer.fit_transform(X, ensure_all_finite=True)
-
-# 2.3 클러스터링
-clusters = kmeans.fit_predict(X_reduced) 
-place_features['cluster'] = clusters
-
-# 평가 지표 출력
-def evaluation_metrics(): 
-    si_score = silhouette_score(X_reduced, place_features['cluster'])
-    db_score = davies_bouldin_score(X_reduced, kmeans.labels_)
-    ch_score = calinski_harabasz_score(X_reduced, kmeans.labels_)
-    
-    print(f"Silhouette score:{si_score}")
-    print(f"SSE (Inertia): {kmeans.inertia_}")
-    print(f"Davies-Bouldin Index: {db_score}")
-    print(f"Calinski-Harabasz Index: {ch_score}")
-
-#for i in range(8):
-#        print(f'cluster{i}: {place_features[place_features['cluster'] == i]['cluster'].count()}')
-
-# 4. 클러스터 시각화 (t-SNE)
-def visualize():
-    X_tsne = tsne.fit_transform(X_reduced)
-    place_features['x'] = X_tsne[:, 0] 
-    place_features['y'] = X_tsne[:, 1]
-
-    plt.figure(figsize=(10, 8))
-    for i in range(k):
-        cluster_points = place_features[place_features['cluster'] == i]
-        plt.scatter(cluster_points['x'], cluster_points['y'], label=f'Cluster {i}')
-    plt.title('place clustering')
-    plt.legend()
-    plt.show()
-
-# visualize()
-
-mbti_weights = {
+MBTI_WEIGHTS = {
     "ISTJ": {"레저/스포츠": 0.5, "전통/역사": 1.0, "감성/체험거리": 0, "조망/전망": 0.5, "자연물": 0.5, "문화시설감상": 0.5},
     "ISFJ": {"레저/스포츠": 0, "전통/역사": 1.0, "감성/체험거리": 1.0, "조망/전망": 1.0, "자연물": 1.0, "문화시설감상": 0.5},
     "INFJ": {"레저/스포츠": 0, "전통/역사": 0.5, "감성/체험거리": 1.0, "조망/전망": 1.0, "자연물": 1.0, "문화시설감상": 1.0},
@@ -139,9 +31,34 @@ mbti_weights = {
     "ENTJ": {"레저/스포츠": 1.0, "전통/역사": 1.0, "감성/체험거리": 0, "조망/전망": 0.5, "자연물": 0.5, "문화시설감상": 0.5},
 }
 
+WEATHER_WEIGHTS = {
+    '맑음': 1.5,
+    '구름많음': 0.5,
+    '흐림': -1.0,
+    '없음': 0.2, # 강수없음
+    '비': -2.0,
+    '비/눈': -2.5,
+    '눈': -2.0,
+    '소나기': -1.5
+}
+
+try:
+    scaler = joblib.load(os.path.join(MODEL_DIR, 'scaler.pkl'))
+    reducer = joblib.load(os.path.join(MODEL_DIR, 'reducer.pkl'))
+    kmeans = joblib.load(os.path.join(MODEL_DIR, 'kmeans.pkl'))
+    tsne = joblib.load(os.path.join(MODEL_DIR, 'tsne.pkl'))
+    X_reduced = np.load(os.path.join(MODEL_DIR, 'X_reduced.npy'))
+    place_features = pd.read_csv(os.path.join(MODEL_DIR, 'clustered_places.csv'))
+except FileNotFoundError:
+    print("오류: 모델 파일을 찾을 수 없습니다. 'train_model.py'를 먼저 실행해주세요.")
+    exit()
+
 # 장소 추천 함수
-async def recommend_places(mbti, 계절):
-    get_weight = mbti_weights[mbti]
+async def recommend_places(mbti: str, 계절: str, 시도: str):
+    get_weight = MBTI_WEIGHTS.get(mbti.upper())
+    if not get_weight:
+        raise ValueError(f"MBTI 유형 '{mbti}'를 찾을 수 없습니다.")
+
     레저_스포츠 = get_weight["레저/스포츠"]
     전통_역사 = get_weight["전통/역사"]
     감성_체험거리 = get_weight["감성/체험거리"]
@@ -149,6 +66,7 @@ async def recommend_places(mbti, 계절):
     자연물 = get_weight["자연물"]
     문화시설감상 = get_weight["문화시설감상"]
 
+    # 파생 변수
     자연_조망_결합 = 자연물 * 조망_전망
     자연_역사_결합 = 자연물 * 전통_역사
     자연_레저_결합 = 자연물 * 레저_스포츠
@@ -162,8 +80,8 @@ async def recommend_places(mbti, 계절):
 
     user_features_data = [[
         레저_스포츠, 전통_역사, 감성_체험거리, 조망_전망, 자연물, 문화시설감상,
-        자연_조망_결합, 자연_역사_결합, 자연_레저_결합, 자연_체험_결합, 역사_문화_결합, 레저_체험_결합,
-        조망_체험_결합, 조망_역사_결합
+        자연_조망_결합, 자연_역사_결합, 자연_레저_결합, 자연_체험_결합, 
+        역사_문화_결합, 레저_체험_결합, 조망_체험_결합, 조망_역사_결합
     ]]
     user_features_df = pd.DataFrame(user_features_data, columns=scaler.feature_names_in_)
 
@@ -180,14 +98,14 @@ async def recommend_places(mbti, 계절):
     K_ITEMS_PER_CLUSTER = 5 # 예: 각 클러스터에서 상위 5개 장소 선택
 
     closest_cluster_labels = np.argsort(distances_to_centroids)[:N_CLOSEST_CLUSTERS]
-
-    # 거리 계산 및 장소 선택
-    recommended_places_list = []
     
+    recommended_places_list = []
+    # 거리 계산 및 장소 선택
     for cluster_label in closest_cluster_labels:
         df_current_cluster_season = place_features[
             (place_features['cluster'] == cluster_label) &
-            (place_features[계절] == 1)].copy()
+            (place_features[계절] == 1) &
+            (place_features['SIDO_NM'] == 시도)].copy()
         
         if df_current_cluster_season.empty:
             continue
@@ -205,6 +123,7 @@ async def recommend_places(mbti, 계절):
 
     final_recommendations_df = pd.concat(recommended_places_list).sort_values('distance')
 
+    # 날씨 받아오기
     weather_results = await request_weather.get_weather_for_dataframe_async(final_recommendations_df)
 
     df_current = pd.DataFrame(pd.Series(weather_results), columns=['data_dict'])
@@ -215,20 +134,59 @@ async def recommend_places(mbti, 계절):
 
     df_merged = final_recommendations_df.join(df_expanded)
 
-    df_merged = df_merged.sort_values('맑음', ascending=False)
+
+    weather_cols = [col for col in WEATHER_WEIGHTS.keys() if col in df_merged.columns]
+    df_merged['WeatherScore'] = sum(df_merged[col] * WEATHER_WEIGHTS[col] for col in weather_cols)
+
+    scaler2 = MinMaxScaler()
+
+    # 거리는 값이 여러 개일 때만 정규화 수행
+    if len(df_merged['distance'].unique()) > 1:
+        df_merged['distance_score'] = 1 - scaler2.fit_transform(df_merged[['distance']])
+    else:
+        df_merged['distance_score'] = 1.0 # 값이 하나뿐이면 최고 점수 부여
+
+    # 날씨 점수도 값이 여러 개일 때만 정규화 수행
+    if len(df_merged['WeatherScore'].unique()) > 1:
+        df_merged['weather_score_normalized'] = scaler2.fit_transform(df_merged[['WeatherScore']])
+    else:
+        df_merged['weather_score_normalized'] = 1.0 # 값이 하나뿐이면 최고 점수 부여
     
-    return df_merged
+    distance_weight = 0.7
+    weather_weight = 0.3
 
-# recommend_places('ISTJ', 'SEASON_SPRING')
+    INDOOR_TYPE_VALUE = 1
 
+    df_merged['FinalScore'] = np.where(
+        df_merged['In/Out_Type(1/0)'] == INDOOR_TYPE_VALUE,  # 조건: 실내 장소일 경우
+        df_merged['distance_score'],  # True: 최종 점수는 거리 점수와 동일
+        (df_merged['distance_score'] * distance_weight) + (df_merged['weather_score_normalized'] * weather_weight)  
+        # False: 실외는 기존 방식대로 계산
+    )
 
+    # 최종 점수가 높은 순으로 정렬하여 반환
+    return df_merged.sort_values(by='FinalScore', ascending=False)
+
+# Test
+if __name__ == '__main__':
+    async def main():
+        mbti = input('mbti를 입력하세요. : ')
+        계절 = input('계절을 입력하세요. : ')
+        시도 = input('시/도를 입력하세요. : ')
+        if(계절 == '봄'): 계절 = 'SEASON_SPRING'
+        elif(계절 == '여름'): 계절 = 'SEASON_SUMMER'
+        elif(계절 == '가을'): 계절 = 'SEASON_AUTUMN'
+        elif(계절 == '겨울'): 계절 = 'SEASON_WINTER'
+        else: raise ValueError(f"계절 유형 '{계절}'을 찾을 수 없습니다.")
+
+        recommendations = await recommend_places(mbti, 계절, 시도)
+        print("\n--- 추천 장소 ---")
+        print(recommendations)
+
+    asyncio.run(main())
 
 
 '''
-
-[[
-#  'SIDO_NM', 'SGG_NM','ITS_BRO_NM','In/Out_Type(1/0)','맑음','구름많음','흐림','없음','비','소나기'
-#   ]])
     날씨는 api를 통해 불러온 후 데이터에 있는 날씨와 비교(즉, 입력받지 않음)
     하늘상태(SKY) 코드 : 맑음(1), 구름많음(3), 흐림(4)
     강수형태(PTY) 코드 : (단기) 없음(0), 비(1), 비/눈(2), 눈(3), 소나기(4)

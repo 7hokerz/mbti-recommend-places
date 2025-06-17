@@ -21,6 +21,16 @@ def get_coordinates(address):
         return float(doc['x']), float(doc['y'])  # (lon, lat)
     return None
 
+# 장소명으로 좌표 반환 (도로명 주소 아님)
+def get_coordinates_from_place(place_name):
+    url = 'https://dapi.kakao.com/v2/local/search/keyword.json'
+    headers = {"Authorization": f"KakaoAK {KAKAO_API_KEY}"}
+    params = {"query": place_name}
+    res = requests.get(url, headers=headers, params=params).json()
+    if res['documents']:
+        doc = res['documents'][0]
+        return float(doc['x']), float(doc['y'])
+
 # 🧭 ORS 경로 거리 및 좌표 반환
 def get_route_geometry(coords):
     route = client.directions(coords, profile='driving-car')
@@ -67,15 +77,71 @@ def create_map_segmented(start, mid, end, seg1_coords, seg2_coords, all_places):
 
     return m
 
+def process():
+    print("장소명을 입력하세요 (예: 낙산공원, 혜화역 등)")
+    names = [input(f"장소 {i+1}: ") for i in range(3)]
+
+    #start_addr = input("출발지 주소를 입력하세요: ")
+    #addr2 = input("두 번째 장소 주소를 입력하세요: ")
+    #addr3 = input("세 번째 장소 주소를 입력하세요: ")
+
+    start = get_coordinates_from_place(names[0])
+    point2 = get_coordinates_from_place(names[1])
+    point3 = get_coordinates_from_place(names[2])
+
+    if not all([start, point2, point3]):
+        print("❌ 좌표 변환 실패! 주소를 다시 확인하세요.")
+        exit()
+
+    print("✅ 출발지 좌표:", start)
+    print("✅ 장소2 좌표:", point2)
+    print("✅ 장소3 좌표:", point3)
+
+    # 가능한 조합 생성
+    candidates = [
+        [start, p1, p2]
+        for (p1, p2) in permutations([point2, point3])
+    ]
+
+    # 최단 경로 선택
+    shortest_distance = float('inf')
+    best_route = None
+
+    for route in candidates:
+        distance, _ = get_route_geometry(route)
+        if distance < shortest_distance:
+            shortest_distance = distance
+            best_route = route
+
+    # 최적 경로를 2구간으로 나눔
+    _, seg1_coords = get_route_geometry([best_route[0], best_route[1]])
+    _, seg2_coords = get_route_geometry([best_route[1], best_route[2]])
+
+    # 장소 검색 (출발/경유/도착 + 중심지점 3곳)
+    keypoints = best_route
+    all_places = []
+    for lon, lat in keypoints:
+        all_places += search_places('CE7', lon, lat)
+        all_places += search_places('FD6', lon, lat)
+
+    # 지도 생성
+    m = create_map_segmented(best_route[0], best_route[1], best_route[2], seg1_coords, seg2_coords, all_places)
+    m.save("route_map_segmented_blue_green.html")
+    print("최적 경로 지도 저장 완료: route_map_segmented_blue_green.html")
+    webbrowser.open("route_map_segmented_blue_green.html")
+
 # 🎯 실행
 if __name__ == '__main__':
-    start_addr = input("출발지 주소를 입력하세요: ")
-    addr2 = input("두 번째 장소 주소를 입력하세요: ")
-    addr3 = input("세 번째 장소 주소를 입력하세요: ")
+    print("장소명을 입력하세요 (예: 낙산공원, 혜화역 등)")
+    names = [input(f"장소 {i+1}: ") for i in range(3)]
 
-    start = get_coordinates(start_addr)
-    point2 = get_coordinates(addr2)
-    point3 = get_coordinates(addr3)
+    #start_addr = input("출발지 주소를 입력하세요: ")
+    #addr2 = input("두 번째 장소 주소를 입력하세요: ")
+    #addr3 = input("세 번째 장소 주소를 입력하세요: ")
+
+    start = get_coordinates_from_place(names[0])
+    point2 = get_coordinates_from_place(names[1])
+    point3 = get_coordinates_from_place(names[2])
 
     if not all([start, point2, point3]):
         print("❌ 좌표 변환 실패! 주소를 다시 확인하세요.")

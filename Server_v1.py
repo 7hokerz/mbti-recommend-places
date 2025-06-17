@@ -21,6 +21,16 @@ def get_coordinates(address):
         return float(doc['x']), float(doc['y'])
     return None
 
+# 장소명으로 좌표 반환 (도로명 주소 아님)
+def get_coordinates_from_place(place_name):
+    url = 'https://dapi.kakao.com/v2/local/search/keyword.json'
+    headers = {"Authorization": f"KakaoAK {KAKAO_API_KEY}"}
+    params = {"query": place_name}
+    res = requests.get(url, headers=headers, params=params).json()
+    if res['documents']:
+        doc = res['documents'][0]
+        return float(doc['x']), float(doc['y'])
+
 # 🧭 ORS 경로 계산
 def get_route(start, end):
     client = Client(key=ORS_API_KEY)
@@ -66,11 +76,11 @@ def create_map(start, end, route_coords, nearby_places):
 
 # 🎯 실행
 if __name__ == '__main__':
-    start_addr = input("출발지 도로명 주소를 입력하세요: ")
-    end_addr = input("도착지 도로명 주소를 입력하세요: ")
+    start_addr = input("출발지 장소명을 입력하세요: ")
+    end_addr = input("도착지 장소명을 입력하세요: ")
 
-    start = get_coordinates(start_addr)
-    end = get_coordinates(end_addr)
+    start = get_coordinates_from_place(start_addr)
+    end = get_coordinates_from_place(end_addr)
 
     if not start or not end:
         print("❌ 좌표 변환 실패! 주소를 다시 확인하세요.")

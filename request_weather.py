@@ -1,15 +1,18 @@
+from dotenv import load_dotenv
 import pandas as pd
 import os
 import datetime
 import asyncio
 import aiohttp
 
+load_dotenv()
+
 script_path = os.path.abspath(__file__)
 script_dir = os.path.dirname(script_path)
 locationData = pd.read_csv(f"{script_dir}/data/location(weather).csv")
 
 API_URL = 'http://apis.data.go.kr/1360000/VilageFcstInfoService_2.0/getVilageFcst'
-SERVICE_KEY = "Nkr+SDBQaBu8zVJgo/YYgInkXvle7ZbIDD1C2SWyUxsyXjzEOljWZ3LXoHAai5sIxOPf25UDnosYoLWVgzdx2Q=="
+SERVICE_KEY = os.environ.get('WEATHER_API_KEY')
 REQUEST_HEADERS = {
     "Accept": "*/*",
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36",
@@ -94,7 +97,7 @@ async def fetch_weather_for_row(session: aiohttp.ClientSession, sd: str, sgg: st
 async def get_weather_for_dataframe_async(df: pd.DataFrame):
     tasks = []
     async with aiohttp.ClientSession(headers=REQUEST_HEADERS) as session:
-        for _, row in df.iterrows(): # Using _ as index is unused
+        for _, row in df.iterrows():
             task = fetch_weather_for_row(session, row['SIDO_NM'], row['SGG_NM'])
             tasks.append(task)
         

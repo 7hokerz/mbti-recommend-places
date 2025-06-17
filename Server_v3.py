@@ -1,13 +1,17 @@
+from dotenv import load_dotenv
 import requests
 import folium
 import webbrowser
 from openrouteservice import Client
 import polyline
 from itertools import permutations
+import os
+
+load_dotenv()
 
 # API 키
-KAKAO_API_KEY = '2086a74814fd03f298b88c0f30c1ea21'
-ORS_API_KEY = '5b3ce3597851110001cf62485578ff6e26694c619b296e9a1dab6461'
+KAKAO_API_KEY = os.environ.get('KAKAO_API_KEY')
+ORS_API_KEY = os.environ.get('ORS_API_KEY')
 client = Client(key=ORS_API_KEY)
 
 # 장소명으로 좌표 반환 (도로명 주소 아님)
@@ -51,6 +55,34 @@ def create_map(loc_names, loc_coords):
     return m
 
 # 실행부
+def process(names):
+    coords = []
+    for name in names:
+        coord = get_coordinates_from_place(name)
+        if not coord:
+            print(f"[오류] 장소명 '{name}'을(를) 찾을 수 없습니다.")
+            exit()
+        coords.append(coord)
+
+    # 중간지점 순서 최적화
+    best_order = None
+    min_dist = float('inf')
+
+    for perm in permutations(coords[1:]):
+        path = [coords[0]] + list(perm)
+        dist = get_total_distance(path)
+        if dist < min_dist:
+            min_dist = dist
+            best_order = path
+            best_names = [names[0]] + [names[1 + i] for i in [coords[1:].index(p) for p in perm]]
+
+    # 지도 생성 및 저장
+    m = create_map(best_names, best_order)
+    m.save("optimal_map.html")
+    print("최적 경로 지도 저장 완료: optimal_map.html")
+    webbrowser.open("optimal_map.html")
+
+
 if __name__ == '__main__':
     print("장소명을 입력하세요 (예: 낙산공원, 혜화역 등)")
     names = [input(f"장소 {i+1}: ") for i in range(3)]
