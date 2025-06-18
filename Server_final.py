@@ -1,8 +1,6 @@
 import requests
 import folium
-import webbrowser
 from openrouteservice import Client
-import polyline
 
 # Kakao REST API 키
 KAKAO_API_KEY = '2086a74814fd03f298b88c0f30c1ea21'
@@ -12,11 +10,10 @@ ORS_API_KEY = '5b3ce3597851110001cf62485578ff6e26694c619b296e9a1dab6461'
 # 주소나 장소명을 좌표로 수정(is_address: True이면 주소, False이면 장소명)
 def get_coordinates_unified(query, is_address=True):
     if isinstance(query, tuple) and len(query) == 2:
-        # 이미 좌표인 경우
         return query
     
     if not isinstance(query, str):
-        print(f"❌ 잘못된 입력: {query}")
+        print(f"잘못된 입력: {query}")
         return None
 
     try:
@@ -28,26 +25,27 @@ def get_coordinates_unified(query, is_address=True):
         response = requests.get(url, headers=headers).json()
         documents = response.get('documents', [])
         if not documents:
-            print(f"❌ '{query}' → 좌표 변환 실패")
+            print(f"'{query}' → 좌표 변환 실패")
             return None
         x, y = float(documents[0]['x']), float(documents[0]['y'])
         return (x, y)
     except Exception as e:
-        print(f"❌ 좌표 변환 중 오류: {e}")
+        print(f"좌표 변환 중 오류: {e}")
         return None
-    
+
+# 경로 좌표 가져오기   
 def get_route_coordinates(start_coords, end_coords):
     try:
         client = Client(key=ORS_API_KEY)
         coords = [start_coords, end_coords]
         route = client.directions(coords, profile='driving-car', format='geojson')
         geometry = route['features'][0]['geometry']['coordinates']
-        return geometry  # [(lon1, lat1), (lon2, lat2), ...]
+        return geometry
     except Exception as e:
-        print(f"❌ 경로 좌표 가져오기 실패: {e}")
+        print(f"경로 좌표 가져오기 실패: {e}")
         return []
 
-
+# 도로기준 거리 계산
 def get_driving_distance(start_address: str, destination_name: str):
     start_coords = get_coordinates_unified(start_address, is_address=True)
     end_coords = get_coordinates_unified(destination_name, is_address=False)
@@ -68,6 +66,7 @@ def get_driving_distance(start_address: str, destination_name: str):
     except Exception as e:
         print(f"거리 계산 실패 ({start_address} → {destination_name}) | 오류: {e}")
         return None
+    
 
 
 # 주변 장소 검색 
