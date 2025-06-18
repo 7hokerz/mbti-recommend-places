@@ -196,15 +196,19 @@ if __name__ == '__main__':
         else:
             return f"{val:.2f}km"
 
-    async def main():
+     # 메인 함수 정의
+ async def main():
+        # 사용자 입력 받기:MBTI, 계절, 주소, 위치
         mbti = input('mbti를 입력하세요. : ')
         계절 = input('계절을 입력하세요. (봄/여름/가을/겨울): ')
         주소 = input('현재 위치 도로명 주소를 입력하세요: ')
+        # 입력받은 계절을 코드명으로 매핑
         계절_map = {
             '봄': 'SEASON_SPRING', '여름': 'SEASON_SUMMER',
             '가을': 'SEASON_AUTUMN', '겨울': 'SEASON_WINTER'
         }
         계절 = 계절_map.get(계절)
+        # 계절 입력이 올바르지 않을 경우 오류 발생
         if not 계절:
             raise ValueError("계절 입력 오류")
 
@@ -215,11 +219,15 @@ if __name__ == '__main__':
             index=False, justify='left', col_space=15,
             formatters={'FinalScore': '{:.6f}'.format, 'real_distance_km': format_km}))
         
+        # 사용자에게 선택지 안내
         print("\n추천된 장소 중 하나의 이름을 입력하세요.")
         for name in recommendations['ITS_BRO_NM']:
             print(f"- {name}")
+            
+        # 사용자로부터 최종 장소 선택 입력    
         selected_place = input("장소명을 정확히 입력하세요: ")
-
+        
+        # 출발지와 도착지 좌표 변환
         start_coords = get_coordinates_unified(주소, is_address=True)
         end_coords = get_coordinates_unified(selected_place, is_address=False)
 
@@ -227,27 +235,31 @@ if __name__ == '__main__':
         if not start_coords or not end_coords:
             print("❌ 좌표 변환 실패")
             return
-
+        
+        # 자동차 경로 탐색
         route_coords = get_driving_distance(start_coords, end_coords)
         if not route_coords:
             print("❌ 경로 계산 실패 - 경로가 반환되지 않았습니다.")
             return
         
+        # 다시 경로 좌표 확인
         route_coords = get_route_coordinates(start_coords, end_coords)
         if not route_coords:
             print("❌ 경로 계산 실패 - 경로가 반환되지 않았습니다.")
             return
-
+        
+        # 경로 중간 지점에서 카페 검색
         midpoints = [route_coords[len(route_coords)//2]]
         cafes = []
         for lon, lat in midpoints:
          cafes += search_places('CE7', lon, lat)
-
+        
+        # 지도 시각화 및 저장
         m = create_map_kakao(start_coords, end_coords, route_coords, cafes)  # ✅ 수정된 부분
         m.save("selected_route_map.html")
         webbrowser.open("selected_route_map.html")
 
-    asyncio.run(main())
+    asyncio.run(main()) # 메인 함수 실행
 
 
 '''
