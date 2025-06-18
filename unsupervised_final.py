@@ -9,7 +9,7 @@ from Server_v1 import get_coordinates_unified, get_driving_distance, create_map_
 import webbrowser
 
 import warnings
-warnings.filterwarnings('ignore', category=FutureWarning)
+warnings.filterwarnings('ignore', category=FutureWarning) # FutureWarning 경고 숨김
 
 # 모델 디렉토리 설정
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
