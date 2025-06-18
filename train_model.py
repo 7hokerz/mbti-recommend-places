@@ -14,9 +14,11 @@ from scipy.cluster.hierarchy import dendrogram, linkage # << 덴드로그램용 
 import warnings
 warnings.filterwarnings('ignore', category=FutureWarning)
 
+# 디렉토리 경로 설정
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 MODEL_DIR = os.path.join(SCRIPT_DIR, "models")
 
+# 기본 설정값
 N_CLUSTERS = 8 # 클러스터 수 
 UMAP_PARAMS = {'n_neighbors': 15, 'min_dist': 0.1, 'n_components': 3 }
 KMEANS_PARAMS = {'n_clusters': N_CLUSTERS }
@@ -58,7 +60,7 @@ def train_save_models():
         '역사_문화_결합','레저_체험_결합','조망_체험_결합','조망_역사_결합'
     ]].copy() # 특성 공학
 
-    scaler = StandardScaler() # 표준화 스케일링?
+    scaler = StandardScaler() # 표준화 스케일링
     reducer = umap.UMAP(**UMAP_PARAMS) # 차원 축소
     kmeans = KMeans(**KMEANS_PARAMS) # 클러스터링
     tsne = TSNE(**TSNE_PARAMS) # 차원 축소 (시각화용)
@@ -99,6 +101,8 @@ def evaluation_metrics():
         print("오류: 모델 파일을 찾을 수 없습니다. 'train_model.py'를 먼저 실행해주세요.")
         exit()
 
+
+    # --- KMeans 평가 지표 ---
     print("--- K-Means 평가 지표 ---")
 
     si_score = silhouette_score(X_reduced, place_features['cluster'])
@@ -110,6 +114,8 @@ def evaluation_metrics():
     print(f"Davies-Bouldin Index: {db_score}")
     print(f"Calinski-Harabasz Index: {ch_score}")
 
+
+    # --- DBSCAN 평가 지표 ---
     print("--- DBSCAN 평가 지표 ---")
 
     labels = dbscan.labels_
@@ -175,14 +181,16 @@ def elbow_search(max_k=10):
     except FileNotFoundError:
         print("오류: 모델 파일을 찾을 수 없습니다. 'train_model.py'를 먼저 실행해주세요.")
         exit()
-
+    
+    # 여러 K에 대한 성능 지표
     k_range = range(2, max_k + 1)
     
     inertia_list = []
     silhouette_list = []
     davies_bouldin_list = []
     calinski_harabasz_list = []
-
+    
+    # k값을 2부터 max_k까지 성능 평가
     print(f"k=2부터 {max_k}까지의 클러스터 성능을 평가합니다...")
     for k in k_range:
         # K-Means 모델 학습
@@ -196,6 +204,7 @@ def elbow_search(max_k=10):
         davies_bouldin_list.append(davies_bouldin_score(X_reduced, labels))
         calinski_harabasz_list.append(calinski_harabasz_score(X_reduced, labels))
     
+    # 폰트 설정
     plt.rcParams['font.family'] = 'Malgun Gothic'
     plt.rcParams['axes.unicode_minus'] = False
     # 4개의 평가지표를 한 번에 시각화
@@ -231,7 +240,7 @@ def elbow_search(max_k=10):
 
 # 그리드 서치
 def elbow_search2(fixed_k=8):
-    data = pd.read_csv(f"{SCRIPT_DIR}/data/place3_3.csv")
+    data = pd.read_csv(f"{SCRIPT_DIR}/data/place3_3.csv") # 데이터 로드
     place_features = create_features(data.copy())[[
         'SIDO_NM', 'SGG_NM', 'ITS_BRO_NM', 'In/Out_Type(1/0)',
         'SEASON_SPRING','SEASON_SUMMER','SEASON_AUTUMN','SEASON_WINTER',
@@ -239,22 +248,27 @@ def elbow_search2(fixed_k=8):
         '자연_조망_결합','자연_역사_결합','자연_레저_결합','자연_체험_결합',
         '역사_문화_결합','레저_체험_결합','조망_체험_결합','조망_역사_결합'
     ]].copy() # 특성 공학
-
-    scaler = StandardScaler() # 표준화 스케일링?
+    
+    # 표준화
+    scaler = StandardScaler() # 표준화 스케일링
     X = scaler.fit_transform(place_features.iloc[:, 8:]) # 표준화 스케일링
     
+    #리스트 초기화
     inertia_list = []
     silhouette_list = []
     davies_bouldin_list = []
     calinski_harabasz_list = []
-
+    
+    # UMAP 파라미터 조합
     param_grid = {
         'n_neighbors': [15, 30],
         'min_dist': [0.1]
     }
-
+    
+    # 조합 리스트
     param_combinations = list(product(param_grid['n_neighbors'], param_grid['min_dist']))
-
+    
+    # 파라미터 성능 평가
     for n_neighbors, min_dist in param_combinations:
         # 1. UMAP으로 데이터 변환 (임베딩)
         reducer = umap.UMAP(
@@ -281,9 +295,11 @@ def elbow_search2(fixed_k=8):
             davies_bouldin_list.append(np.inf)
             calinski_harabasz_list.append(0)
     
+    # 폰트 설정
     plt.rcParams['font.family'] = 'Malgun Gothic'
     plt.rcParams['axes.unicode_minus'] = False
     
+    # 서브플롯 생성
     fig, axs = plt.subplots(2, 2, figsize=(18, 12))
     fig.suptitle(f'UMAP 파라미터 조합에 따른 클러스터링 성능 평가 (k={fixed_k})', fontsize=16)
     
@@ -323,16 +339,19 @@ def elbow_search2(fixed_k=8):
 # 클러스터 시각화 (t-SNE)
 def visualize():
     try:
+        # 학습된 모델, 클러스터 결과 불러오기
         tsne = joblib.load(os.path.join(MODEL_DIR, 'tsne.pkl'))
         X_reduced = np.load(os.path.join(MODEL_DIR, 'X_reduced.npy'))
         place_features = pd.read_csv(os.path.join(MODEL_DIR, 'clustered_places.csv'))
     except FileNotFoundError:
         print("오류: 모델 파일을 찾을 수 없습니다. 'train_model.py'를 먼저 실행해주세요.")
         exit()
+    # 축소된 데이터를 t-SNE로 추가 축소    
     X_tsne = tsne.fit_transform(X_reduced)
     place_features['x'] = X_tsne[:, 0] 
     place_features['y'] = X_tsne[:, 1]
-
+    
+    # 산점도 그리기
     plt.figure(figsize=(10, 8))
     for i in range(N_CLUSTERS):
         cluster_points = place_features[place_features['cluster'] == i]
@@ -342,9 +361,9 @@ def visualize():
     plt.show()
 
 if __name__ == '__main__':
-    train_save_models()
+    train_save_models() # 모델 학습 저장
     #elbow_search()
     #elbow_search2()
-    evaluation_metrics()
+    evaluation_metrics() # 평가 지표 출력
     #visualize_dendrogram()
     #visualize()
