@@ -231,7 +231,7 @@ if __name__ == '__main__':
         start_coords = get_coordinates_unified(주소, is_address=True)
         end_coords = get_coordinates_unified(selected_place, is_address=False)
 
-
+        # 변환 실패 시 종료
         if not start_coords or not end_coords:
             print("❌ 좌표 변환 실패")
             return
