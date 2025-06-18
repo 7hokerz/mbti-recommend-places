@@ -11,9 +11,11 @@ import webbrowser
 import warnings
 warnings.filterwarnings('ignore', category=FutureWarning)
 
+# 모델 디렉토리 설정
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 MODEL_DIR = os.path.join(SCRIPT_DIR, "models")
 
+ # mbti별 각 카테고리에 대해서 가중치 설정
 MBTI_WEIGHTS = {
     "ISTJ": {"레저/스포츠": 0.5, "전통/역사": 1.0, "감성/체험거리": 0, "조망/전망": 0.5, "자연물": 0.5, "문화시설감상": 0.5},
     "ISFJ": {"레저/스포츠": 0, "전통/역사": 1.0, "감성/체험거리": 1.0, "조망/전망": 1.0, "자연물": 1.0, "문화시설감상": 0.5},
@@ -33,6 +35,7 @@ MBTI_WEIGHTS = {
     "ENTJ": {"레저/스포츠": 1.0, "전통/역사": 1.0, "감성/체험거리": 0, "조망/전망": 0.5, "자연물": 0.5, "문화시설감상": 0.5},
 }
 
+# 날씨에 따른 가중치 설정
 WEATHER_WEIGHTS = {
     '맑음': 1.5,
     '구름많음': 0.5,
@@ -44,6 +47,7 @@ WEATHER_WEIGHTS = {
     '소나기': -1.5
 }
 
+# 모델, 스케일러, 차원 축소, 클러스터링 불러오기
 try:
     scaler = joblib.load(os.path.join(MODEL_DIR, 'scaler.pkl'))
     reducer = joblib.load(os.path.join(MODEL_DIR, 'reducer.pkl'))
@@ -61,6 +65,7 @@ async def recommend_places(mbti: str, 계절: str, 현재주소: str):
     if not get_weight:
         raise ValueError(f"MBTI 유형 '{mbti}'를 찾을 수 없습니다.")
 
+    # 개별 feature 값
     레저_스포츠 = get_weight["레저/스포츠"]
     전통_역사 = get_weight["전통/역사"]
     감성_체험거리 = get_weight["감성/체험거리"]
@@ -80,6 +85,7 @@ async def recommend_places(mbti: str, 계절: str, 현재주소: str):
     역사_문화_결합 = 전통_역사 * 문화시설감상
     레저_체험_결합 = 레저_스포츠 * 감성_체험거리
 
+    # 최종 feature 벡터
     user_features_data = [[
         레저_스포츠, 전통_역사, 감성_체험거리, 조망_전망, 자연물, 문화시설감상,
         자연_조망_결합, 자연_역사_결합, 자연_레저_결합, 자연_체험_결합, 
@@ -92,8 +98,8 @@ async def recommend_places(mbti: str, 계절: str, 현재주소: str):
     user_reduced = reducer.transform(user_scaled)
     user_umap_point = user_reduced[0]  # 사용자의 UMAP 공간 좌표
 
+    # 클러스터 중심점과 거리 계산
     cluster_centroids = kmeans.cluster_centers_
-
     distances_to_centroids = np.sqrt(np.sum((cluster_centroids - user_umap_point)**2, axis=1))
 
     N_CLOSEST_CLUSTERS = 3  # 예: 가장 가까운 클러스터 3개 선택
@@ -114,7 +120,8 @@ async def recommend_places(mbti: str, 계절: str, 현재주소: str):
         
         if df_current_cluster_season.empty:
             continue
-        
+
+        # 거리 계산
         indices_in_X_reduced = df_current_cluster_season.index
 
         points_for_distance_calc = X_reduced[indices_in_X_reduced]
@@ -125,7 +132,8 @@ async def recommend_places(mbti: str, 계절: str, 현재주소: str):
 
         top_k_in_cluster = df_current_cluster_season.sort_values('distance').head(K_ITEMS_PER_CLUSTER)
         recommended_places_list.append(top_k_in_cluster)
-
+        
+    # 클러스터별 추천 장소 합침
     final_recommendations_df = pd.concat(recommended_places_list).sort_values('distance')
 
     # 실제 거리 계산 (수정한 부분)
@@ -133,9 +141,10 @@ async def recommend_places(mbti: str, 계절: str, 현재주소: str):
     lambda place: get_driving_distance(현재주소, place)
     )
 
-    # 날씨 받아오기
+    # 실시간 날씨 받아오기
     weather_results = await request_weather.get_weather_for_dataframe_async(final_recommendations_df)
 
+    # 날씨 데이터 병합
     df_current = pd.DataFrame(pd.Series(weather_results), columns=['data_dict'])
 
     df_expanded = df_current['data_dict'].apply(pd.Series)
@@ -144,7 +153,7 @@ async def recommend_places(mbti: str, 계절: str, 현재주소: str):
 
     df_merged = final_recommendations_df.join(df_expanded)
 
-
+    # 날씨 점수 계산
     weather_cols = [col for col in WEATHER_WEIGHTS.keys() if col in df_merged.columns]
     df_merged['WeatherScore'] = sum(df_merged[col] * WEATHER_WEIGHTS[col] for col in weather_cols)
 
@@ -161,11 +170,12 @@ async def recommend_places(mbti: str, 계절: str, 현재주소: str):
         df_merged['weather_score_normalized'] = scaler2.fit_transform(df_merged[['WeatherScore']])
     else:
         df_merged['weather_score_normalized'] = 1.0 # 값이 하나뿐이면 최고 점수 부여
-    
+        
+    # 가중치 설정
     distance_weight = 0.7
     weather_weight = 0.3
 
-    INDOOR_TYPE_VALUE = 1
+    INDOOR_TYPE_VALUE = 1  # 실내 장소 1
 
     df_merged['FinalScore'] = np.where(
         df_merged['In/Out_Type(1/0)'] == INDOOR_TYPE_VALUE,  # 조건: 실내 장소일 경우
@@ -198,6 +208,7 @@ if __name__ == '__main__':
         if not 계절:
             raise ValueError("계절 입력 오류")
 
+        #추천 결과 출력
         recommendations = await recommend_places(mbti, 계절, 주소)
         print("\n--- 추천 장소 ---")
         print(recommendations[['ITS_BRO_NM', 'SIDO_NM', 'SGG_NM', 'FinalScore', 'real_distance_km']].to_string(
