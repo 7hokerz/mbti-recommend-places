@@ -53,7 +53,7 @@ def process_weather_items(items: list):
 async def fetch_api_data(session: aiohttp.ClientSession, payload: dict):
     for attempt in range(5):
         try:
-            async with session.get(API_URL, params=payload, timeout=aiohttp.ClientTimeout(total=5.0)) as response:
+            async with session.get(API_URL, params=payload, timeout=aiohttp.ClientTimeout(total=10.0)) as response:
                 response.raise_for_status() # HTTP 에러 발생 시 예외 발생
                 weather_data = await response.json()
 
@@ -64,7 +64,7 @@ async def fetch_api_data(session: aiohttp.ClientSession, payload: dict):
                 
                 return weather_data.get("response", {}).get("body", {}).get("items", {}).get("item", [])
         except Exception as e:
-            print(f"API 요청 중 오류 발생 (시도 {attempt+1}/5): {e}")
+            print(f"API 요청을 재시도 합니다. (시도 {attempt+1}/5): {e}")
             if attempt < 4:
                 await asyncio.sleep(1)
     return None
