@@ -29,7 +29,7 @@ def get_coords(sd: str, sgg: str):
         return None, None
 
 # 날씨 데이터에서 SKY, PTY 카운트 추출
-def process_weather_items(items: list):
+def process_weather_items(items: list, 날짜: str):
     if not items:
         return None
 
@@ -40,10 +40,11 @@ def process_weather_items(items: list):
     for item in items:
         category = item.get("category")
         value = item.get("fcstValue")
-        if category == 'SKY':
+        date = item.get("fcstDate")
+        if category == 'SKY' and date == 날짜:
             meaning = sky_code_meaning.get(value)
             data_count[meaning] += 1
-        elif category == 'PTY':
+        elif category == 'PTY' and date == 날짜:
             meaning = pty_code_meaning.get(value)
             data_count[meaning] += 1
 
@@ -70,7 +71,7 @@ async def fetch_api_data(session: aiohttp.ClientSession, payload: dict):
     return None
 
 # 한 행(장소)에 대한 날씨 요청
-async def fetch_weather_for_row(session: aiohttp.ClientSession, sd: str, sgg: str):
+async def fetch_weather_for_row(session: aiohttp.ClientSession, sd: str, sgg: str, 날짜: str):
     X, Y = get_coords(sd, sgg)
     if X is None:
         return None
@@ -91,14 +92,14 @@ async def fetch_weather_for_row(session: aiohttp.ClientSession, sd: str, sgg: st
         print(f"{sd} {sgg}의 날씨 정보를 가져오지 못했습니다.")
         return None
             
-    return process_weather_items(items)
+    return process_weather_items(items, 날짜)
 
 # 여러 장소(데이터프레임)에 대한 날씨 요청
-async def get_weather_for_dataframe_async(df: pd.DataFrame):
+async def get_weather_for_dataframe_async(df: pd.DataFrame, 날짜: str):
     tasks = []
     async with aiohttp.ClientSession(headers=REQUEST_HEADERS) as session:
         for _, row in df.iterrows():
-            task = fetch_weather_for_row(session, row['SIDO_NM'], row['SGG_NM'])
+            task = fetch_weather_for_row(session, row['SIDO_NM'], row['SGG_NM'], 날짜)
             tasks.append(task)
         
         # asyncio.gather를 사용하여 모든 작업을 동시에 실행하고 결과를 받음
@@ -112,9 +113,10 @@ if __name__ == '__main__':
     async def main():
         sd = input("시/도를 입력하세요: ")
         sgg = input("시/군/구를 입력하세요: ")
+        날짜 = input('가고 싶은 날짜 (현재로부터 4일 이내)를 입력하세요 (예: 20250619): ')
 
         async with aiohttp.ClientSession(headers=REQUEST_HEADERS) as session:
-            result = await fetch_weather_for_row(session, sd, sgg)
+            result = await fetch_weather_for_row(session, sd, sgg, 날짜)
 
         if result:
             print("\n--- 날씨 정보 ---")

@@ -59,7 +59,7 @@ except FileNotFoundError:
     exit()
 
 # 장소 추천 함수
-async def recommend_places(mbti: str, 계절: str, 현재주소: str):
+async def recommend_places(mbti: str, 계절: str, 현재주소: str, 날짜: str):
     get_weight = MBTI_WEIGHTS.get(mbti.upper()) # 대문자 변환
     if not get_weight:
         raise ValueError(f"MBTI 유형 '{mbti}'를 찾을 수 없습니다.")
@@ -126,7 +126,7 @@ async def recommend_places(mbti: str, 계절: str, 현재주소: str):
     )
 
     # 날씨 정보를 받아오고 이를 기존 df에 병합
-    weather_results = await request_weather.get_weather_for_dataframe_async(final_recommendations_df)
+    weather_results = await request_weather.get_weather_for_dataframe_async(final_recommendations_df, 날짜)
 
     # 통신 문제 등으로 인해 날씨 정보를 받지 못하면 거리 기준으로만 반환
     if weather_results is not None:
@@ -169,7 +169,7 @@ def show_route(recommendations, 주소):
     print("\n--- 추천 장소 목록 ---")
 
     print(tabulate.tabulate(
-    recommendations.dropna(subset=['real_distance_km'])[['ITS_BRO_NM', 'SIDO_NM', 'SGG_NM', 'FinalScore', 'real_distance_km']],
+    recommendations.dropna(subset=['real_distance_km'])[['ITS_BRO_NM', 'SIDO_NM', 'SGG_NM','WeatherScore','FinalScore', 'real_distance_km']],
     headers='keys', tablefmt='pretty'))
     print("\n추천된 장소 리스트 입니다. (경로 추천이 가능한)")
     for idx, row in recommendations.iterrows():
@@ -217,6 +217,7 @@ if __name__ == '__main__':
         mbti = input('mbti를 입력하세요 : ')
         계절 = input('계절을 입력하세요(봄/여름/가을/겨울) : ')
         주소 = input('현재 위치 도로명 주소를 입력하세요 (예: 서울특별시 성북구 삼선교로16길 116): ')
+        날짜 = input('가고 싶은 날짜 (현재로부터 4일 이내)를 입력하세요 (예: 20250619): ')
         계절_map = {
             '봄': 'SEASON_SPRING', '여름': 'SEASON_SUMMER',
             '가을': 'SEASON_AUTUMN', '겨울': 'SEASON_WINTER'
@@ -225,7 +226,7 @@ if __name__ == '__main__':
         if not 계절:
             raise ValueError("계절 입력 오류") 
 
-        recommendations = await recommend_places(mbti, 계절, 주소)
+        recommendations = await recommend_places(mbti, 계절, 주소, 날짜)
         show_route(recommendations, 주소)
 
     asyncio.run(main())
