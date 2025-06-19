@@ -42,15 +42,24 @@ WEATHER_API_KEY=기상청_인증키
 
 | 파일명 | 설명 |
 |--------|------|
-| `start.ipynb` | 사용자에게 MBTI, 계절, 현재 위치(주소)를 입력받아 추천 경로 시각화를 실행하는 노트북 파일입니다. |
-| `process_recommend_place.py` | 장소 추천 → 경로 탐색 → 지도 시각화를 순차적으로 수행하는 메인 로직이 포함되어 있습니다. |
-| `recommend_places.py` | MBTI + 계절 기반으로 장소를 추천하는 알고리즘을 구현합니다. |
-| `kakao_route_service.py` | Kakao API 및 OpenRouteService를 활용하여 좌표 검색, 경로 계산, 지도 생성, 주변 장소 탐색을 수행합니다. |
-| `weather_api.py` | 기상청 API를 통해 현재 위치의 날씨 정보를 가져옵니다. |
-| `clustered_places.csv` | 장소별 특징(계절/테마) 및 클러스터 정보를 포함한 주요 데이터셋입니다. |
-| `.env` | 민감한 API 키를 보관하는 파일로, GitHub에 업로드되지 않도록 `.gitignore`에 포함되어야 합니다. |
-| `requirements.txt` | 프로젝트 실행에 필요한 Python 패키지 목록이 정의된 파일입니다. |
-| `README.md` | 프로젝트 개요, 설치 방법, 실행 예시 등이 정리된 문서입니다. |
+| `data/location(weather).csv` | 행정구역별 위도·경도·격자 정보 데이터 (기상청 API 사용을 위한 좌표 변환용) |
+| `data/place3_3.csv` | 장소의 지역명, 카테고리, 계절 정보 등을 담은 원본 입력 데이터셋 |
+| `models/clustered_places.csv` | `train_model.py` 실행 결과로 생성된 추천용 클러스터링 결과 데이터 |
+| `models/X_reduced.npy` | UMAP을 통해 차원 축소된 벡터 데이터 (후속 시각화, 추천 모델에 사용) |
+| `models/kmeans.pkl` | KMeans 클러스터링 모델 객체 |
+| `models/agg_cluster.pkl` | 계층적 군집화 모델 객체 |
+| `models/dbscan.pkl` | DBSCAN 클러스터링 모델 객체 |
+| `models/reducer.pkl` | 학습된 UMAP 차원 축소기 객체 |
+| `models/scaler.pkl` | 특성 정규화를 위한 StandardScaler 객체 |
+| `models/tsne.pkl` | t-SNE 차원 축소기 객체 (2D/3D 시각화용) |
+| `.env` | Kakao, ORS(OpenRouteService), 기상청 API 키 등 환경 변수 설정 파일 |
+| `train_model.py` | 클러스터링 학습 파이프라인 전체 수행: UMAP + KMeans/DBSCAN + 결과 저장 |
+| `process_recommend_place.py` | MBTI + 계절 + 날씨 + 거리 기반 맞춤형 장소 추천 + 경로 탐색 기능 |
+| `kakao_route_service.py` | Kakao 및 ORS API를 활용한 좌표 변환, 거리 계산, 지도 시각화 기능 |
+| `request_weather.py` | 기상청 API를 활용해 위치 기반 날씨 정보 수집 비동기 처리 모듈 |
+| `start.ipynb` | 사용자 입력(MBTI/계절/주소) 기반 추천 실행 진입점 (최종 실행용) |
+| `project.ipynb` | 전체 학습·추천·시각화 기능의 통합 실행 및 실험 기록 노트북 |
+| `README.md` | 프로젝트 소개, 실행 방법, 데이터/파일 설명 등을 포함한 문서 |
 
 ---
 
