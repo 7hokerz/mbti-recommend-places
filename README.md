@@ -63,31 +63,6 @@ WEATHER_API_KEY=기상청_인증키
 
 ---
 
-## 실행 예시 (Python)
-
-```python
-from kakao_route_service import get_driving_distance, create_map_kakao, get_coordinates_unified, get_route_coordinates, search_places
-
-start = "서울시청"
-end = "강남역"
-
-# 거리 계산
-distance_km = get_driving_distance(start, end)
-print(f"{start} → {end}까지 도로 기준 거리: {distance_km}km")
-
-# 경로 및 지도 생성
-route_coords = get_route_coordinates(
-    get_coordinates_unified(start, is_address=True),
-    get_coordinates_unified(end, is_address=False)
-)
-
-nearby = search_places(category="CE7", lon=route_coords[1][0], lat=route_coords[1][1])  # 카페
-m = create_map_kakao(get_coordinates_unified(start), get_coordinates_unified(end), route_coords, nearby)
-m.save("route_map.html")
-```
-
----
-
 ## 오픈소스 라이선스
 
 이 프로젝트는 다음과 같은 오픈소스 및 외부 API를 활용하고 있으며, 각 구성 요소는 해당 라이선스를 따릅니다.
@@ -104,7 +79,7 @@ m.save("route_map.html")
 ---
 
 ## 실험 환경
-Python 3.12.7
+Python==3.12.3
 aiohttp==3.12.7
 folium==0.19.7
 imbalanced-learn==0.13.0
