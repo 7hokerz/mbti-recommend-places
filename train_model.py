@@ -9,7 +9,6 @@ from sklearn.manifold import TSNE
 from sklearn.metrics import silhouette_score, davies_bouldin_score, calinski_harabasz_score
 import os
 import matplotlib.pyplot as plt
-from scipy.cluster.hierarchy import dendrogram, linkage # << 덴드로그램용 추가
 import seaborn as sns
 
 import warnings
@@ -40,10 +39,8 @@ def create_features(df):
     df['자연_역사_결합'] = (df['자연물'] & df['전통/역사']).astype(int)
     df['자연_레저_결합'] = (df['자연물'] & df['레저/스포츠']).astype(int)
     df['자연_체험_결합'] = (df['자연물'] & df['감성/체험거리']).astype(int)
-
     df['조망_체험_결합'] = (df['조망/전망'] & df['감성/체험거리']).astype(int)
     df['조망_역사_결합'] = (df['조망/전망'] & df['전통/역사']).astype(int)
-    
     df['역사_문화_결합'] = (df['전통/역사'] & df['문화시설감상']).astype(int)
     df['레저_체험_결합'] = (df['레저/스포츠'] & df['감성/체험거리']).astype(int)
     
@@ -140,7 +137,7 @@ def evaluation_metrics():
     return metrics_df
 
 # 엘보우 서치 (최적의 K값 확인)
-def elbow_search(max_k=13):
+def elbow_search(max_k=15):
     try:
         X_reduced = np.load(os.path.join(MODEL_DIR, 'X_reduced.npy'))
     except FileNotFoundError:
@@ -157,7 +154,7 @@ def elbow_search(max_k=13):
     print(f"k=2부터 {max_k}까지의 클러스터 성능을 평가합니다...")
     for k in k_range:
         # K-Means 모델 학습
-        kmeans = KMeans(n_clusters=k)
+        kmeans = KMeans(n_clusters=k,random_state=42)
         kmeans.fit(X_reduced)
         labels = kmeans.labels_
 

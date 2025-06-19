@@ -167,8 +167,9 @@ async def recommend_places(mbti: str, 계절: str, 현재주소: str):
 
 def show_route(recommendations, 주소):
     print("\n--- 추천 장소 목록 ---")
+
     print(tabulate.tabulate(
-    recommendations[['ITS_BRO_NM', 'SIDO_NM', 'SGG_NM', 'FinalScore', 'real_distance_km']],
+    recommendations.dropna(subset=['real_distance_km'])[['ITS_BRO_NM', 'SIDO_NM', 'SGG_NM', 'FinalScore', 'real_distance_km']],
     headers='keys', tablefmt='pretty'))
     print("\n추천된 장소 리스트 입니다. (경로 추천이 가능한)")
     for idx, row in recommendations.iterrows():

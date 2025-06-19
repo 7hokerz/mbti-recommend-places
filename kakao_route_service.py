@@ -1,3 +1,4 @@
+import warnings
 from dotenv import load_dotenv
 import requests
 import folium
@@ -5,6 +6,9 @@ from openrouteservice import Client
 import os
 
 load_dotenv()
+
+# 'Server down'으로 시작하는 UserWarning 메시지를 무시하도록 필터링 설정
+warnings.filterwarnings('ignore', message='Server down.*', category=UserWarning)
 
 KAKAO_API_KEY = os.environ.get('KAKAO_API_KEY')
 ORS_API_KEY = os.environ.get('ORS_API_KEY')
