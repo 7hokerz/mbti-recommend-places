@@ -171,7 +171,7 @@ def show_route(recommendations, 주소):
     print(tabulate.tabulate(
     recommendations.dropna(subset=['real_distance_km'])[['ITS_BRO_NM', 'SIDO_NM', 'SGG_NM','WeatherScore','FinalScore', 'real_distance_km']],
     headers='keys', tablefmt='pretty'))
-    print("\n추천된 장소 리스트 입니다. (경로 추천이 가능한)")
+    print("\n추천된 장소 리스트 입니다. (경로 추천 가능)\n")
     for idx, row in recommendations.iterrows():
         if pd.notna(row['real_distance_km']):
             print(f"- {row['ITS_BRO_NM']}")
@@ -216,7 +216,7 @@ if __name__ == '__main__':
     async def main():
         mbti = input('mbti를 입력하세요 : ')
         계절 = input('계절을 입력하세요(봄/여름/가을/겨울) : ')
-        주소 = input('현재 위치 도로명 주소를 입력하세요 (예: 서울특별시 성북구 삼선교로16길 116): ')
+        주소 = input('출발지의 주소를 입력하세요 (예: 서울특별시 성북구 삼선교로16길 116): ')
         날짜 = input('가고 싶은 날짜 (현재로부터 4일 이내)를 입력하세요 (예: 20250619): ')
         계절_map = {
             '봄': 'SEASON_SPRING', '여름': 'SEASON_SUMMER',
