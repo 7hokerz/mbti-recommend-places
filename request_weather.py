@@ -5,17 +5,14 @@ import datetime
 import asyncio
 import aiohttp
 
-# 환경 변수 로드
 load_dotenv()
 
-# 현재 스크립트의 경로 및 위치 설정
 script_path = os.path.abspath(__file__)
 script_dir = os.path.dirname(script_path)
-locationData = pd.read_csv(f"{script_dir}/data/location(weather).csv") # 좌표 데이터 로딩
+locationData = pd.read_csv(f"{script_dir}/data/location(weather).csv")
 
-# 기상청 API
 API_URL = 'http://apis.data.go.kr/1360000/VilageFcstInfoService_2.0/getVilageFcst'
-SERVICE_KEY = os.environ.get('WEATHER_API_KEY') # API 키
+SERVICE_KEY = os.environ.get('WEATHER_API_KEY')
 REQUEST_HEADERS = {
     "Accept": "*/*",
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36",
@@ -35,13 +32,11 @@ def get_coords(sd: str, sgg: str):
 def process_weather_items(items: list):
     if not items:
         return None
-    
-    # 날씨별 카운트
+
     data_count = {"맑음": 0, "구름많음": 0, "흐림": 0, "없음": 0, "비": 0, "비/눈": 0, "눈": 0,"소나기": 0}
     sky_code_meaning = {"1": "맑음", "3": "구름많음", "4": "흐림"}
     pty_code_meaning = {"0": "없음", "1": "비", "2": "비/눈", "3": "눈","4": "소나기"}
-    
-    # 각 항목에 분류 코드 및 카운트
+
     for item in items:
         category = item.get("category")
         value = item.get("fcstValue")
@@ -59,7 +54,7 @@ async def fetch_api_data(session: aiohttp.ClientSession, payload: dict):
     for attempt in range(5):
         try:
             async with session.get(API_URL, params=payload, timeout=aiohttp.ClientTimeout(total=10.0)) as response:
-                response.raise_for_status() # HTTP 에러 발생 시 예외 발생
+                response.raise_for_status() 
                 weather_data = await response.json()
 
                 header = weather_data.get("response", {}).get("header", {})
@@ -69,7 +64,7 @@ async def fetch_api_data(session: aiohttp.ClientSession, payload: dict):
                 
                 return weather_data.get("response", {}).get("body", {}).get("items", {}).get("item", [])
         except Exception as e:
-            print(f"API 요청을 재시도 합니다. (시도 {attempt+1}/5): {e}")
+            print(f"API 요청을 재시도 합니다. (시도 {attempt+1}/5)")
             if attempt < 4:
                 await asyncio.sleep(1)
     return None
@@ -79,8 +74,7 @@ async def fetch_weather_for_row(session: aiohttp.ClientSession, sd: str, sgg: st
     X, Y = get_coords(sd, sgg)
     if X is None:
         return None
-    
-    # 기상청 API 호출에 필요한 파라미터 구성
+
     payload = {
         "serviceKey": SERVICE_KEY,
         "numOfRows": 1000,
@@ -91,14 +85,11 @@ async def fetch_weather_for_row(session: aiohttp.ClientSession, sd: str, sgg: st
         "nx": X,
         "ny": Y,
     }
-    
-    # API 호출 및 응답 데이터 추출
+
     items = await fetch_api_data(session, payload)
-    
-    # 응답이 없거나 실패한 경우 메시지 출력 후 None 반환
-    if not items:  
+    if not items:
         print(f"{sd} {sgg}의 날씨 정보를 가져오지 못했습니다.")
-        return None  
+        return None
             
     return process_weather_items(items)
 
