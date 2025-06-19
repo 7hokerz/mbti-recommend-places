@@ -38,7 +38,7 @@ WEATHER_API_KEY=기상청_인증키
 
 ---
 
-## 📁 주요 파일 설명
+## 주요 파일 설명
 
 | 파일명 | 설명 |
 |--------|------|
@@ -54,7 +54,7 @@ WEATHER_API_KEY=기상청_인증키
 
 ---
 
-## 🚀 실행 예시 (Python)
+## 실행 예시 (Python)
 
 ```python
 from kakao_route_service import get_driving_distance, create_map_kakao, get_coordinates_unified, get_route_coordinates, search_places
@@ -79,7 +79,7 @@ m.save("route_map.html")
 
 ---
 
-## 📝 오픈소스 라이선스
+## 오픈소스 라이선스
 
 이 프로젝트는 다음과 같은 오픈소스 및 외부 API를 활용하고 있으며, 각 구성 요소는 해당 라이선스를 따릅니다.
 
@@ -92,15 +92,4 @@ m.save("route_map.html")
 | [Requests](https://requests.readthedocs.io/) | HTTP 통신 처리 | Apache License 2.0 |
 | [Pandas](https://pandas.pydata.org/) | 데이터프레임 처리 | BSD License |
 
-> ⚠️ `.env` 파일은 GitHub에 업로드되지 않도록 `.gitignore`에 반드시 추가해야 합니다.
-
----
-
-## 📬 문의
-
-- 이름: 홍길동  
-- 이메일: gil.dong@example.com  
-- GitHub: [your-username](https://github.com/your-username)
-
----
 
